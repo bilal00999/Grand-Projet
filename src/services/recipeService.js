@@ -10,6 +10,13 @@ class RecipeService {
       import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   }
 
+  extractCookTime(timeString) {
+    if (!timeString) return null;
+    // Extract number from strings like "40 minutes", "25 min", "1 hour", etc.
+    const match = timeString.toString().match(/(\d+)/);
+    return match ? parseInt(match[1]) : null;
+  }
+
   async generateRecipe(
     ingredients,
     dietaryPreferences = "",
@@ -315,22 +322,47 @@ Make sure the recipe is practical, uses the provided ingredients as main compone
 
   // Save recipe to backend
   async saveRecipeToBackend(recipe, jwt) {
-    const response = await fetch(`${this.backendUrl}/recipes`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
-      body: JSON.stringify({
-        title: recipe.title,
-        ingredients: recipe.ingredients,
-        instructions: recipe.instructions.join
-          ? recipe.instructions.join("\n")
-          : recipe.instructions,
-      }),
-    });
-    if (!response.ok) throw new Error("Failed to save recipe");
-    return await response.json();
+    console.log("=== saveRecipeToBackend called ===");
+    console.log("Recipe to save:", recipe);
+    console.log("JWT:", jwt ? "Present" : "Missing");
+    try {
+      const response = await fetch(`${this.backendUrl}/recipes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          title: recipe.title,
+          ingredients: recipe.ingredients,
+          instructions: recipe.instructions.join
+            ? recipe.instructions.join("\n")
+            : recipe.instructions,
+          cookTime: (() => {
+            console.log("recipe.cookingTime in service:", recipe.cookingTime);
+            console.log("recipe.cookTime in service:", recipe.cookTime);
+            const extracted =
+              this.extractCookTime(recipe.cookingTime) ||
+              this.extractCookTime(recipe.cookTime);
+            console.log("Extracted cookTime in service:", extracted);
+            return extracted || 30;
+          })(),
+        }),
+      });
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Response error:", errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      console.log("Save result:", result);
+      return result;
+    } catch (error) {
+      console.error("saveRecipeToBackend error:", error);
+      throw error;
+    }
   }
 
   // Fetch recipes from backend

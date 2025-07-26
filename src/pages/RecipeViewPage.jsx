@@ -141,6 +141,36 @@ export default function RecipeViewPage() {
     );
   }
 
+  // Defensive defaults for missing fields
+  const {
+    title = "Untitled Recipe",
+    description = "No description provided.",
+    cookingTime, // string from n8n, e.g., "40 minutes"
+    cookTime, // number, e.g., 40
+    servings = 4,
+    difficulty = "Easy",
+    tags = ["Quick", "Healthy", "One-pan"],
+    nutrition = { calories: 285, protein: 32, carbs: 8, fat: 14 },
+    instructions = [],
+    ingredients = [],
+  } = recipe;
+
+  // Ensure instructions is always an array
+  let safeInstructions = instructions;
+  console.log("Original instructions:", instructions);
+  console.log("Type of instructions:", typeof instructions);
+
+  if (typeof safeInstructions === "string") {
+    safeInstructions = safeInstructions.split("\n").filter(Boolean);
+    console.log("After splitting string:", safeInstructions);
+  }
+  if (!Array.isArray(safeInstructions)) {
+    safeInstructions = [];
+    console.log("Defaulting to empty array");
+  }
+
+  console.log("Final safeInstructions:", safeInstructions);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -199,21 +229,13 @@ export default function RecipeViewPage() {
         {/* Recipe Header */}
         <div className="mb-8">
           <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                {recipe.title}
-              </h1>
-              <p className="text-lg text-gray-600 mb-4">{recipe.description}</p>
+            <div className="mr-8">
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">{title}</h1>
+              {description && description !== "No description provided." && (
+                <p className="text-lg text-gray-600 mb-4">{description}</p>
+              )}
             </div>
             <div className="flex space-x-2">
-              <Button
-                variant={isSaved ? "default" : "outline"}
-                onClick={handleSaveRecipe}
-                className="flex items-center space-x-2"
-              >
-                <Bookmark className="h-4 w-4" />
-                <span>{isSaved ? "Saved" : "Save Recipe"}</span>
-              </Button>
               <Button
                 variant="outline"
                 onClick={handleShare}
@@ -229,18 +251,24 @@ export default function RecipeViewPage() {
           <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
             <div className="flex items-center space-x-1">
               <Clock className="h-4 w-4" />
-              <span>{recipe.cookTime} minutes</span>
+              <span>
+                {cookingTime
+                  ? cookingTime
+                  : cookTime !== undefined
+                  ? `${cookTime} minutes`
+                  : "-"}
+              </span>
             </div>
             <div className="flex items-center space-x-1">
               <Users className="h-4 w-4" />
-              <span>{recipe.servings} servings</span>
+              <span>{servings} servings</span>
             </div>
-            <Badge variant="secondary">{recipe.difficulty}</Badge>
+            <Badge variant="secondary">{difficulty}</Badge>
           </div>
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2">
-            {recipe.tags.map((tag, index) => (
+            {tags.map((tag, index) => (
               <Badge
                 key={index}
                 variant="outline"
@@ -264,7 +292,7 @@ export default function RecipeViewPage() {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {recipe.ingredients.map((ingredient, index) => (
+                  {ingredients.map((ingredient, index) => (
                     <li key={index} className="flex items-start space-x-2">
                       <div className="w-2 h-2 bg-emerald-600 rounded-full mt-2 flex-shrink-0"></div>
                       <span className="text-sm">{ingredient}</span>
@@ -283,25 +311,25 @@ export default function RecipeViewPage() {
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
                     <div className="text-2xl font-bold text-emerald-600">
-                      {recipe.nutrition.calories}
+                      {nutrition.calories}
                     </div>
                     <div className="text-sm text-gray-600">Calories</div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-emerald-600">
-                      {recipe.nutrition.protein}
+                      {nutrition.protein}
                     </div>
                     <div className="text-sm text-gray-600">Protein</div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-emerald-600">
-                      {recipe.nutrition.carbs}
+                      {nutrition.carbs}
                     </div>
                     <div className="text-sm text-gray-600">Carbs</div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-emerald-600">
-                      {recipe.nutrition.fat}
+                      {nutrition.fat}
                     </div>
                     <div className="text-sm text-gray-600">Fat</div>
                   </div>
@@ -320,48 +348,35 @@ export default function RecipeViewPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recipe.instructions.map((instruction, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-start space-x-4 p-4 rounded-lg border transition-colors ${
-                        completedSteps.has(index)
-                          ? "bg-emerald-50 border-emerald-200"
-                          : "bg-white border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      <Button
-                        variant={
-                          completedSteps.has(index) ? "default" : "outline"
-                        }
-                        size="sm"
-                        className={`flex-shrink-0 w-8 h-8 rounded-full p-0 ${
-                          completedSteps.has(index)
-                            ? "bg-emerald-600 hover:bg-emerald-700"
-                            : "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-                        }`}
-                        onClick={() => toggleStepCompletion(index)}
-                      >
-                        {completedSteps.has(index) ? (
-                          <CheckCircle className="h-4 w-4" />
-                        ) : (
-                          <span className="text-sm font-medium">
-                            {index + 1}
-                          </span>
-                        )}
-                      </Button>
-                      <p
-                        className={`text-sm leading-relaxed ${
-                          completedSteps.has(index)
-                            ? "text-emerald-800"
-                            : "text-gray-700"
-                        }`}
-                      >
-                        {instruction}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                {safeInstructions.length === 0 ? (
+                  <div className="text-gray-500">No instructions provided.</div>
+                ) : (
+                  <ol className="list-decimal list-inside space-y-2">
+                    {safeInstructions.map((instruction, index) => {
+                      let text = "";
+                      if (typeof instruction === "string") {
+                        text = instruction;
+                      } else if (
+                        typeof instruction === "object" &&
+                        instruction !== null
+                      ) {
+                        text =
+                          instruction.description ||
+                          instruction.step ||
+                          instruction.text ||
+                          "";
+                      }
+                      return (
+                        <li
+                          key={index}
+                          className="text-sm text-gray-700 leading-relaxed"
+                        >
+                          {text}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
               </CardContent>
             </Card>
 
@@ -370,11 +385,6 @@ export default function RecipeViewPage() {
               <Link to="/dashboard">
                 <Button variant="outline" size="lg">
                   Generate Another Recipe
-                </Button>
-              </Link>
-              <Link to="/history">
-                <Button variant="outline" size="lg">
-                  Save to My Recipes
                 </Button>
               </Link>
             </div>

@@ -8,15 +8,26 @@ const router = express.Router();
 // Create a new recipe
 router.post("/", supabaseAuth, async (req, res) => {
   try {
-    const { title, ingredients, instructions } = req.body;
+    const { title, ingredients, instructions, cookTime } = req.body;
+    console.log("Backend received cookTime:", cookTime);
+    console.log("Backend received body:", req.body);
     const userId = req.user.sub; // Supabase user id
     if (!title || !ingredients || !instructions) {
       return res.status(400).json({ error: "Missing fields" });
     }
-    const recipe = new Recipe({ userId, title, ingredients, instructions });
+    const recipe = new Recipe({
+      userId,
+      title,
+      ingredients,
+      instructions,
+      cookTime,
+    });
+    console.log("Recipe object before save:", recipe);
     await recipe.save();
+    console.log("Recipe saved with cookTime:", recipe.cookTime);
     res.status(201).json(recipe);
   } catch (err) {
+    console.error("Error saving recipe:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

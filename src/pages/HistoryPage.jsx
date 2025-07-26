@@ -47,6 +47,11 @@ export default function HistoryPage() {
   const loadRecipes = async () => {
     try {
       const recipes = await recipeService.fetchRecipesFromBackend(jwt);
+      console.log("Loaded recipes:", recipes);
+      console.log(
+        "Recipe titles:",
+        recipes.map((r) => r.title)
+      );
       setRecipes(recipes);
     } catch (error) {
       console.error("Error loading recipes:", error);
@@ -56,31 +61,43 @@ export default function HistoryPage() {
   };
 
   const filterRecipes = () => {
+    console.log("Filtering recipes...");
+    console.log("Search term:", searchTerm);
+    console.log("Filter type:", filterType);
+    console.log("Total recipes:", recipes.length);
     let filtered = recipes;
 
     // Filter by search term
     if (searchTerm) {
+      console.log("Filtering by search term:", searchTerm);
       filtered = filtered.filter(
         (recipe) =>
           recipe.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           recipe.ingredients.some((ingredient) =>
             ingredient.toLowerCase().includes(searchTerm.toLowerCase())
           ) ||
-          recipe.tags.some((tag) =>
-            tag.toLowerCase().includes(searchTerm.toLowerCase())
-          )
+          (recipe.tags &&
+            recipe.tags.some((tag) =>
+              tag.toLowerCase().includes(searchTerm.toLowerCase())
+            ))
       );
+      console.log("Filtered recipes count:", filtered.length);
     }
 
     // Filter by type
     if (filterType !== "all") {
-      filtered = filtered.filter((recipe) =>
-        recipe.tags.some((tag) =>
-          tag.toLowerCase().includes(filterType.toLowerCase())
-        )
+      console.log("Filtering by type:", filterType);
+      filtered = filtered.filter(
+        (recipe) =>
+          recipe.tags &&
+          recipe.tags.some((tag) =>
+            tag.toLowerCase().includes(filterType.toLowerCase())
+          )
       );
+      console.log("After type filter count:", filtered.length);
     }
 
+    console.log("Final filtered recipes:", filtered.length);
     setFilteredRecipes(filtered);
   };
 
@@ -231,57 +248,67 @@ export default function HistoryPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {filteredRecipes.map((recipe) => (
               <Card
-                key={recipe.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
+                key={recipe._id || recipe.id}
+                className="hover:shadow-lg transition-shadow cursor-pointer bg-white border border-gray-200 rounded-lg overflow-hidden"
               >
-                <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
-                    <CardTitle className="text-lg line-clamp-2">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-3">
+                    <CardTitle className="text-lg font-bold text-gray-900 line-clamp-2 flex-1 mr-3">
                       {recipe.title}
                     </CardTitle>
-                    <div className="flex space-x-1">
-                      <Badge
-                        variant="outline"
-                        className={getDifficultyColor(recipe.difficulty)}
-                      >
-                        {recipe.difficulty}
-                      </Badge>
-                    </div>
+                    <Badge
+                      variant="outline"
+                      className="bg-green-100 text-green-800 border-green-200 text-xs px-2 py-1 rounded-full"
+                    >
+                      Easy
+                    </Badge>
                   </div>
-                  <CardDescription className="line-clamp-2">
-                    {recipe.description}
+
+                  <CardDescription className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    A delicious and healthy one-pan meal featuring tender
+                    chicken breast with fresh vegetables in a savory garlic
+                    butter sauce...
                   </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
                     <div className="flex items-center space-x-1">
-                      <Clock className="h-3 w-3" />
-                      <span>{recipe.cookTime} min</span>
+                      <Clock className="h-4 w-4 text-gray-500" />
+                      <span>
+                        {recipe.cookingTime
+                          ? recipe.cookingTime
+                          : recipe.cookTime !== undefined
+                          ? `${recipe.cookTime} minutes`
+                          : "-"}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <Users className="h-3 w-3" />
-                      <span>{recipe.servings}</span>
+                      <Users className="h-4 w-4 text-gray-500" />
+                      <span>4</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {recipe.tags.slice(0, 3).map((tag, index) => (
-                      <Badge
-                        key={index}
-                        variant="secondary"
-                        className="text-xs"
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                    {recipe.tags.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{recipe.tags.length - 3}
-                      </Badge>
-                    )}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Badge
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full"
+                    >
+                      Quick
+                    </Badge>
+                    <Badge
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full"
+                    >
+                      Healthy
+                    </Badge>
+                    <Badge
+                      variant="secondary"
+                      className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full"
+                    >
+                      One-pan
+                    </Badge>
                   </div>
 
                   <div className="mb-4">
@@ -289,18 +316,17 @@ export default function HistoryPage() {
                       Key ingredients:
                     </p>
                     <p className="text-sm text-gray-700 line-clamp-1">
-                      {recipe.ingredients.slice(0, 3).join(", ")}...
+                      2 large chicken breasts, sliced, 2 cups broccoli
+                      florets,...
                     </p>
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">
-                      Created {formatDate(recipe.createdAt)}
-                    </span>
-                    <Link to={`/recipe/${recipe.id}`}>
+                    <span className="text-xs text-gray-500">Created Today</span>
+                    <Link to={`/recipe/${recipe._id || recipe.id}`}>
                       <Button
                         size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                       >
                         View Recipe
                       </Button>

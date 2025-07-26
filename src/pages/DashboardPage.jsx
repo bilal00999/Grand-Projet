@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,43 +29,198 @@ import recipeService from "../services/recipeService";
 
 export default function DashboardPage() {
   const [ingredients, setIngredients] = useState("");
-  const [dietaryPreference, setDietaryPreference] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [recipe, setRecipe] = useState(null); // recipe object
+  const [error, setError] = useState("");
+  const [recentRecipes, setRecentRecipes] = useState([]);
+  const [hasSaved, setHasSaved] = useState(false);
   const { user, signOut, jwt } = useAuth();
   const navigate = useNavigate();
 
-  const recentRecipes = [
-    { id: 1, title: "Chicken Stir Fry", time: "25 min", date: "2 hours ago" },
-    { id: 2, title: "Pasta Carbonara", time: "20 min", date: "Yesterday" },
-    { id: 3, title: "Vegetable Curry", time: "35 min", date: "2 days ago" },
-    { id: 4, title: "Grilled Salmon", time: "15 min", date: "3 days ago" },
-  ];
+  // Fetch real recent recipes on mount and after save
+  useEffect(() => {
+    if (jwt) fetchRecentRecipes();
+    // eslint-disable-next-line
+  }, [jwt]);
 
+  const fetchRecentRecipes = async () => {
+    try {
+      const recipes = await recipeService.fetchRecipesFromBackend(jwt);
+      console.log("Fetched recipes:", recipes);
+      setRecentRecipes(recipes.slice(0, 4)); // Show only first 4 recipes
+    } catch (e) {
+      console.error("Error fetching recipes:", e);
+      setRecentRecipes([]);
+    }
+  };
+
+  // Save recipe to backend
+  const saveRecipeToHistory = async (recipeObj) => {
+    console.log("=== saveRecipeToHistory START ===");
+    console.log("recipeObj:", recipeObj);
+    console.log("hasSaved:", hasSaved);
+    console.log("recipeObj truthy:", !!recipeObj);
+    console.log("=== saveRecipeToHistory called ===");
+    console.log("recipeObj received:", recipeObj);
+    console.log("hasSaved:", hasSaved);
+    if (!recipeObj || hasSaved) return;
+    console.log("Proceeding with save...");
+    try {
+      // Convert instructions array to string if needed
+      console.log("Original instructions:", recipeObj.instructions);
+      console.log("First instruction object:", recipeObj.instructions[0]);
+      const instructions = Array.isArray(recipeObj.instructions)
+        ? recipeObj.instructions
+            .map((step) => {
+              console.log("Processing step:", step);
+              if (typeof step === "string") return step;
+              if (typeof step === "object") {
+                const text =
+                  step.description ||
+                  step.text ||
+                  step.instruction ||
+                  step.content ||
+                  step.step ||
+                  "";
+                console.log("Extracted text:", text);
+                return text;
+              }
+              return "";
+            })
+            .filter(Boolean)
+            .join("\n")
+        : recipeObj.instructions;
+      console.log("Instructions converted:", instructions);
+
+      // Add ingredients if missing (use the original input ingredients)
+      console.log("recipeObj.cookingTime:", recipeObj.cookingTime);
+      console.log("recipeObj.cookTime:", recipeObj.cookTime);
+      const extractedCookTime =
+        extractCookTime(recipeObj.cookingTime) ||
+        extractCookTime(recipeObj.cookTime);
+      console.log("Extracted cookTime:", extractedCookTime);
+      const recipeToSave = {
+        ...recipeObj,
+        instructions,
+        ingredients:
+          recipeObj.ingredients ||
+          ingredients
+            .split(",")
+            .map((i) => i.trim())
+            .filter(Boolean),
+        cookTime: extractedCookTime || 30,
+      };
+
+      console.log("Saving recipe to backend:", recipeToSave);
+      console.log("About to call recipeService.saveRecipeToBackend...");
+      const savedRecipe = await recipeService.saveRecipeToBackend(
+        recipeToSave,
+        jwt
+      );
+      if (savedRecipe && (savedRecipe._id || savedRecipe.id)) {
+        navigate(`/recipe/${savedRecipe._id || savedRecipe.id}`);
+      }
+      console.log("recipeService.saveRecipeToBackend completed successfully");
+      setHasSaved(true);
+      fetchRecentRecipes();
+    } catch (e) {
+      console.error("Error in saveRecipeToHistory:", e);
+      console.error("Error saving recipe:", e);
+    }
+  };
+
+  // Generate recipe handler
   const handleGenerateRecipe = async (e) => {
     e.preventDefault();
     if (!ingredients.trim()) return;
-
     setIsGenerating(true);
+    setRecipe(null);
+    setError("");
+    setHasSaved(false);
     try {
-      const recipe = await recipeService.generateRecipe(
-        ingredients,
-        dietaryPreference,
-        ""
+      const response = await fetch("http://localhost:5000/ai-recipe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ingredients: ingredients
+            .split(",")
+            .map((i) => i.trim())
+            .filter(Boolean),
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to generate recipe");
+      const data = await response.json();
+      let recipeObj = null;
+      if (data.recipe && typeof data.recipe.result === "string") {
+        const match = data.recipe.result.match(/```json\n([\s\S]*?)```/);
+        if (match && match[1]) {
+          try {
+            recipeObj = JSON.parse(match[1]);
+          } catch (e) {
+            try {
+              recipeObj = JSON.parse(data.recipe.result);
+            } catch (e2) {
+              recipeObj = null;
+            }
+          }
+        }
+      }
+      setRecipe(recipeObj);
+      console.log("AI Generated Recipe Object:", recipeObj);
+      console.log("Full recipeObj keys:", Object.keys(recipeObj));
+      console.log(
+        "Testing extractCookTime with '40 minutes':",
+        extractCookTime("40 minutes")
       );
-      // Save to backend
-      const savedRecipe = await recipeService.saveRecipeToBackend(recipe, jwt);
-      // Navigate to the generated recipe (use savedRecipe._id or similar)
-      navigate(`/recipe/${savedRecipe._id || savedRecipe.id}`);
-    } catch (error) {
-      console.error("Error generating or saving recipe:", error);
+      console.log(
+        "Testing extractCookTime with '25 min':",
+        extractCookTime("25 min")
+      );
+      if (recipeObj) {
+        await saveRecipeToHistory(recipeObj);
+        // Navigation will happen inside saveRecipeToHistory
+      }
+    } catch {
+      setError("Error generating recipe. Please try again.");
     } finally {
       setIsGenerating(false);
     }
   };
 
+  // Generate Another Recipe handler
+  const handleGenerateAnother = async () => {
+    if (recipe && !hasSaved) {
+      await saveRecipeToHistory(recipe);
+    }
+    setRecipe(null);
+    setIngredients("");
+    setError("");
+    setHasSaved(false);
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return "Today";
+    if (diffDays === 2) return "Yesterday";
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    if (diffDays <= 30) return `${Math.ceil((diffDays - 1) / 7)} weeks ago`;
+    return date.toLocaleDateString();
+  };
+
+  const extractCookTime = (timeString) => {
+    if (!timeString) return null;
+    // Extract number from strings like "40 minutes", "25 min", "1 hour", etc.
+    const match = timeString.toString().match(/(\d+)/);
+    return match ? parseInt(match[1]) : null;
   };
 
   return (
@@ -158,33 +313,6 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="dietary"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Dietary Preferences
-                    </label>
-                    <Select
-                      value={dietaryPreference}
-                      onValueChange={setDietaryPreference}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select dietary preference (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No restrictions</SelectItem>
-                        <SelectItem value="vegetarian">Vegetarian</SelectItem>
-                        <SelectItem value="vegan">Vegan</SelectItem>
-                        <SelectItem value="keto">Keto</SelectItem>
-                        <SelectItem value="paleo">Paleo</SelectItem>
-                        <SelectItem value="gluten-free">Gluten-free</SelectItem>
-                        <SelectItem value="dairy-free">Dairy-free</SelectItem>
-                        <SelectItem value="low-carb">Low-carb</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <Button
                     type="submit"
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-lg py-6"
@@ -193,7 +321,7 @@ export default function DashboardPage() {
                     {isGenerating ? (
                       <div className="flex items-center space-x-2">
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Generating your recipe...</span>
+                        <span>Generating recipe...</span>
                       </div>
                     ) : (
                       <div className="flex items-center space-x-2">
@@ -203,6 +331,60 @@ export default function DashboardPage() {
                     )}
                   </Button>
                 </form>
+                {/* Output Section */}
+                <div className="mt-8">
+                  {isGenerating && (
+                    <div className="text-emerald-700 font-medium">
+                      Generating recipe...
+                    </div>
+                  )}
+                  {error && (
+                    <div className="text-red-600 font-medium">{error}</div>
+                  )}
+                  {recipe && !isGenerating && !error && (
+                    <>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mt-4">
+                        <h2 className="text-xl font-bold mb-2">
+                          {recipe.title || "Your AI-Generated Recipe"}
+                        </h2>
+                        {recipe.cookingTime && (
+                          <div>
+                            <strong>Cooking Time:</strong> {recipe.cookingTime}
+                          </div>
+                        )}
+                        {recipe.servings && (
+                          <div>
+                            <strong>Servings:</strong> {recipe.servings}
+                          </div>
+                        )}
+                        {recipe.instructions &&
+                          Array.isArray(recipe.instructions) && (
+                            <div className="mt-4">
+                              <strong>Instructions:</strong>
+                              <ol className="list-decimal list-inside ml-4">
+                                {recipe.instructions.map((step, idx) => (
+                                  <li key={idx}>{step.description || step}</li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+                        {recipe.instructions &&
+                          !Array.isArray(recipe.instructions) && (
+                            <div className="mt-4 whitespace-pre-line">
+                              {recipe.instructions}
+                            </div>
+                          )}
+                      </div>
+                      <Button
+                        className="w-full mt-4"
+                        variant="outline"
+                        onClick={handleGenerateAnother}
+                      >
+                        Generate Another Recipe
+                      </Button>
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -217,24 +399,34 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {recentRecipes.map((recipe) => (
-                  <div
-                    key={recipe.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                  >
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        {recipe.title}
-                      </h4>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        <span>{recipe.time}</span>
-                        <span>•</span>
-                        <span>{recipe.date}</span>
+                {recentRecipes.length === 0 ? (
+                  <div className="text-gray-500">No recent recipes found.</div>
+                ) : (
+                  recentRecipes.map((recipe) => (
+                    <div
+                      key={recipe._id || recipe.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    >
+                      <div>
+                        <h4 className="font-medium text-gray-900">
+                          {recipe.title}
+                        </h4>
+                        <div className="flex items-center space-x-2 text-sm text-gray-500">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            {recipe.cookTime || recipe.time || "30"} min
+                          </span>
+                          <span>•</span>
+                          <span>
+                            {recipe.createdAt
+                              ? formatDate(recipe.createdAt)
+                              : "-"}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
                 <Link to="/history">
                   <Button variant="outline" className="w-full mt-4">
                     View All Recipes
