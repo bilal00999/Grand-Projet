@@ -19,19 +19,30 @@ app.use((req, res, next) => {
   ];
 
   const origin = req.headers.origin;
+  console.log("Request origin:", origin);
+  console.log("Allowed origins:", allowedOrigins);
+
   if (allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
+    console.log("Set CORS origin to:", origin);
+  } else {
+    console.log("Origin not in allowed list:", origin);
   }
 
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, DELETE, OPTIONS"
   );
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
   res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Max-Age", "86400");
 
   // Handle preflight requests
   if (req.method === "OPTIONS") {
+    console.log("Handling OPTIONS request");
     res.status(200).end();
     return;
   }
@@ -53,11 +64,65 @@ mongoose
 const recipesRoute = require("./routes/recipes");
 app.use("/recipes", recipesRoute);
 
+// Explicit OPTIONS handler for ai-recipe endpoint
+app.options("/ai-recipe", (req, res) => {
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://recipe-app-frontend.vercel.app",
+    "https://grand-projet-omega.vercel.app",
+    "https://grand-projet-psi.vercel.app",
+  ];
+
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Max-Age", "86400");
+
+  console.log("OPTIONS request for /ai-recipe from origin:", origin);
+  res.status(200).end();
+});
+
 // Add AI recipe generation endpoint
 app.post("/ai-recipe", async (req, res) => {
   console.log("AI recipe endpoint hit");
   console.log("Request headers:", req.headers);
   console.log("Request origin:", req.headers.origin);
+
+  // Set CORS headers explicitly for this endpoint
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://recipe-app-frontend.vercel.app",
+    "https://grand-projet-omega.vercel.app",
+    "https://grand-projet-psi.vercel.app",
+  ];
+
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
   try {
     let { ingredients } = req.body;
