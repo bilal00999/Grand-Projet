@@ -13,8 +13,11 @@ app.use(
       "http://localhost:5173",
       "http://localhost:5174",
       "https://recipe-app-frontend.vercel.app",
+      "https://grand-projet-omega.vercel.app",
     ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(express.json());
@@ -40,8 +43,11 @@ app.options(
       "http://localhost:5173",
       "http://localhost:5174",
       "https://recipe-app-frontend.vercel.app",
+      "https://grand-projet-omega.vercel.app",
     ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -54,8 +60,11 @@ app.options(
       "http://localhost:5173",
       "http://localhost:5174",
       "https://recipe-app-frontend.vercel.app",
+      "https://grand-projet-omega.vercel.app",
     ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -86,6 +95,23 @@ app.post("/ai-recipe", async (req, res) => {
 app.get("/", (req, res) => {
   res.send("API is running");
 });
+
+// Handle OPTIONS for root path
+app.options(
+  "/",
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://recipe-app-frontend.vercel.app",
+      "https://grand-projet-omega.vercel.app",
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

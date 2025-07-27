@@ -140,7 +140,9 @@ export default function DashboardPage() {
     try {
       const backendUrl =
         import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-      const response = await fetch(`${backendUrl}/ai-recipe`, {
+      // Ensure no trailing slash to avoid double slashes
+      const cleanBackendUrl = backendUrl.replace(/\/$/, "");
+      const response = await fetch(`${cleanBackendUrl}/ai-recipe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -6,8 +6,10 @@ class RecipeService {
     this.apiKey = import.meta.env.VITE_OPENAI_API_KEY;
     this.apiBase =
       import.meta.env.VITE_OPENAI_API_BASE || "https://api.openai.com/v1";
-    this.backendUrl =
+    const backendUrl =
       import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+    // Ensure no trailing slash to avoid double slashes
+    this.backendUrl = backendUrl.replace(/\/$/, "");
   }
 
   extractCookTime(timeString) {
