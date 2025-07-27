@@ -138,7 +138,9 @@ export default function DashboardPage() {
     setError("");
     setHasSaved(false);
     try {
-      const response = await fetch("http://localhost:5000/ai-recipe", {
+      const backendUrl =
+        import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+      const response = await fetch(`${backendUrl}/ai-recipe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
