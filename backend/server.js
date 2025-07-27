@@ -6,20 +6,38 @@ const cors = require("cors");
 const axios = require("axios");
 
 const app = express();
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://recipe-app-frontend.vercel.app",
-      "https://grand-projet-omega.vercel.app",
-    ],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+
+// Enable CORS for all routes
+app.use((req, res, next) => {
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://recipe-app-frontend.vercel.app",
+    "https://grand-projet-omega.vercel.app",
+  ];
+
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
+  next();
+});
+
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
@@ -34,42 +52,12 @@ mongoose
 const recipesRoute = require("./routes/recipes");
 app.use("/recipes", recipesRoute);
 
-// Add OPTIONS handling for recipes endpoint
-app.options(
-  "/recipes",
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://recipe-app-frontend.vercel.app",
-      "https://grand-projet-omega.vercel.app",
-    ],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
-// Add OPTIONS handling for ai-recipe endpoint
-app.options(
-  "/ai-recipe",
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://recipe-app-frontend.vercel.app",
-      "https://grand-projet-omega.vercel.app",
-    ],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
 // Add AI recipe generation endpoint
 app.post("/ai-recipe", async (req, res) => {
+  console.log("AI recipe endpoint hit");
+  console.log("Request headers:", req.headers);
+  console.log("Request origin:", req.headers.origin);
+
   try {
     let { ingredients } = req.body;
     console.log("Received ingredients:", ingredients);
@@ -95,23 +83,6 @@ app.post("/ai-recipe", async (req, res) => {
 app.get("/", (req, res) => {
   res.send("API is running");
 });
-
-// Handle OPTIONS for root path
-app.options(
-  "/",
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://recipe-app-frontend.vercel.app",
-      "https://grand-projet-omega.vercel.app",
-    ],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
