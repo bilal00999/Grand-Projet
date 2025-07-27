@@ -327,29 +327,50 @@ Make sure the recipe is practical, uses the provided ingredients as main compone
     console.log("=== saveRecipeToBackend called ===");
     console.log("Recipe to save:", recipe);
     console.log("JWT:", jwt ? "Present" : "Missing");
+    console.log("Backend URL:", this.backendUrl);
+
     try {
+      // Ensure instructions is a string
+      let instructions = recipe.instructions;
+      if (Array.isArray(instructions)) {
+        instructions = instructions.join("\n");
+      } else if (typeof instructions !== "string") {
+        instructions = String(instructions);
+      }
+
+      // Ensure ingredients is an array
+      let ingredients = recipe.ingredients;
+      if (typeof ingredients === "string") {
+        ingredients = ingredients
+          .split(",")
+          .map((i) => i.trim())
+          .filter(Boolean);
+      }
+
+      const requestBody = {
+        title: recipe.title,
+        ingredients: ingredients,
+        instructions: instructions,
+        cookTime: (() => {
+          console.log("recipe.cookingTime in service:", recipe.cookingTime);
+          console.log("recipe.cookTime in service:", recipe.cookTime);
+          const extracted =
+            this.extractCookTime(recipe.cookingTime) ||
+            this.extractCookTime(recipe.cookTime);
+          console.log("Extracted cookTime in service:", extracted);
+          return extracted || 30;
+        })(),
+      };
+
+      console.log("Request body to send:", requestBody);
+
       const response = await fetch(`${this.backendUrl}/recipes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
         },
-        body: JSON.stringify({
-          title: recipe.title,
-          ingredients: recipe.ingredients,
-          instructions: recipe.instructions.join
-            ? recipe.instructions.join("\n")
-            : recipe.instructions,
-          cookTime: (() => {
-            console.log("recipe.cookingTime in service:", recipe.cookingTime);
-            console.log("recipe.cookTime in service:", recipe.cookTime);
-            const extracted =
-              this.extractCookTime(recipe.cookingTime) ||
-              this.extractCookTime(recipe.cookTime);
-            console.log("Extracted cookTime in service:", extracted);
-            return extracted || 30;
-          })(),
-        }),
+        body: JSON.stringify(requestBody),
       });
       console.log("Response status:", response.status);
       console.log("Response ok:", response.ok);
