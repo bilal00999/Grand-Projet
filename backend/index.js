@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
+const mongoose = require("mongoose");
 
 const app = express();
 
@@ -51,18 +52,17 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-app.options(
-  "/ai-recipe",
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "https://recipe-app-frontend.vercel.app",
-      "http://localhost:5174",
-    ],
-    credentials: true,
-  })
-);
+const PORT = process.env.PORT || 5000;
+const MONGODB_URI = process.env.MONGODB_URI;
+
+// Connect to MongoDB
+mongoose
+  .connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB connection error:", err));
+
+const recipesRoute = require("./routes/recipes");
+app.use("/recipes", recipesRoute);
 
 // Explicit OPTIONS handler for ai-recipe endpoint
 app.options("/ai-recipe", (req, res) => {
@@ -148,7 +148,6 @@ app.get("/", (req, res) => {
   res.send("Recipe AI Backend is running.");
 });
 
-const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
