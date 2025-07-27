@@ -15,6 +15,7 @@ app.use((req, res, next) => {
     "http://localhost:5174",
     "https://recipe-app-frontend.vercel.app",
     "https://grand-projet-omega.vercel.app",
+    "https://grand-projet-psi.vercel.app",
   ];
 
   const origin = req.headers.origin;
