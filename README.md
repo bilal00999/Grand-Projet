@@ -3,6 +3,7 @@
 A smart recipe app that helps you create recipes from whatever ingredients you have at home. Just type what you’ve got, hit generate, and get a step-by-step recipe instantly using AI.
 
 🔗 [Live Demo] https://grand-projet-psi.vercel.app/
+🔗 [short video] https://www.linkedin.com/posts/bilal-ahmed-b70339292_im-excited-to-share-my-latest-project-ai-activity-7355518041591287809-xhFB?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEbiekQBAfHmhmLWdoEkewoLgHGvDknvBMM
 
 ---
 
